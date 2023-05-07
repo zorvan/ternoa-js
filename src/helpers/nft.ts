@@ -3,7 +3,7 @@ import { mnemonicGenerate } from "@polkadot/util-crypto"
 import { File } from "formdata-node"
 
 import { TernoaIPFS } from "./ipfs"
-import { decryptFile, encryptFile, generatePGPKeys } from "./encryption"
+import { decryptFile, encryptFile, generateSSSKey } from "./encryption"
 import {
   combineKeyShares,
   formatStorePayload,
@@ -26,7 +26,7 @@ import { isValidAddress } from "../blockchain"
  * @name secretNftEncryptAndUploadFile
  * @summary                 Encrypts and uploads a file on an IFPS gateway.
  * @param file              File to encrypt and then upload on IPFS.
- * @param publicPGPKey      Public Key to encrypt the file.
+ * @param privatePGPKey     Private Key to encrypt the file.
  * @param ipfsClient        A TernoaIPFS instance.
  * @param nftMetadata       Optional secret NFT metadata (Title, Description, (...)) {@link https://github.com/capsule-corp-ternoa/ternoa-proposals/blob/main/TIPs/tip-510-Secret-nft.md here}.
  * @param mediaMetadata     Optional asset NFT metadata (Name, Description, (...)) {@link https://github.com/capsule-corp-ternoa/ternoa-proposals/blob/main/TIPs/tip-510-Secret-nft.md here}.
@@ -34,13 +34,14 @@ import { isValidAddress } from "../blockchain"
  */
 export const secretNftEncryptAndUploadFile = async (
   file: File,
+  privatePGPKey: string,
   publicPGPKey: string,
   ipfsClient: TernoaIPFS,
   nftMetadata?: Partial<NftMetadataType>,
   mediaMetadata?: MediaMetadataType,
 ) => {
   if (!file) throw new Error(`${Errors.IPFS_FILE_UPLOAD_ERROR} - File undefined`)
-  const encryptedFile = await encryptFile(file, publicPGPKey)
+  const encryptedFile = await encryptFile(file, privatePGPKey)
   const ipfsRes = await ipfsClient.storeSecretNFT(encryptedFile, file.type, publicPGPKey, nftMetadata, mediaMetadata)
 
   return ipfsRes
@@ -145,10 +146,11 @@ export const mintSecretNFT = async (
   await getEnclaveHealthStatus(clusterId)
 
   // 1. media encryption and upload
-  const { privateKey, publicKey } = await generatePGPKeys()
+  const [privateKey,publicKey] = await generateSSSKey()
   const { Hash: offchainDataHash } = await ipfsClient.storeNFT(nftFile, nftMetadata)
   const { Hash: secretOffchainDataHash } = await secretNftEncryptAndUploadFile(
     secretNftFile,
+    privateKey,
     publicKey,
     ipfsClient,
     secretNftMetadata,

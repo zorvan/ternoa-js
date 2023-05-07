@@ -1,6 +1,6 @@
 // eslint-disable-next-line @typescript-eslint/ban-ts-comment
 // @ts-ignore
-import { create, combine } from "sssa-js"
+import { combine_secret, split_secret } from "vsss-wasm"
 import { Buffer } from "buffer"
 import { IKeyringPair } from "@polkadot/types/types"
 import { hexToString } from "@polkadot/util"
@@ -16,13 +16,14 @@ import {
   TeeSharesRemoveType,
   RequesterType,
 } from "./types"
-import { ensureHttps, removeURLSlash, retryPost } from "./utils"
+import { ensureHttps, removeURLSlash, retryPost, base64ToArrayBuffer } from "./utils"
 
 import { getClusterData, getEnclaveData } from "../tee"
 import { Errors } from "../constants"
 import { EnclaveHealthType, NFTShareAvailableType } from "tee/types"
 import { isValidAddress } from "../blockchain"
 
+export const SSSA_SIZE = 34
 export const SSSA_NUMSHARES = 5
 export const SSSA_THRESHOLD = 3
 
@@ -44,14 +45,30 @@ export const SIGNER_BLOCK_VALIDITY = 20
 
 /**
  * @name generateKeyShares
- * @summary     Generates an array of shares from the incoming parameter string.
- * @param data  The data to split into shares (e.g. private key).
- * @returns     An array of stringified shares.
+ * @summary       Generates an array of shares from the incoming parameter string.
+ * @param secret  The secret data to be splitted into shares (e.g. private key).
+ * @returns       An array of stringified shares.
  */
-export const generateKeyShares = (data: string): string[] => {
-  const shares = create(SSSA_THRESHOLD, SSSA_NUMSHARES, data)
-  const base64shares: string[] = shares.map((share: string) => Buffer.from(share).toString("base64"))
-  return base64shares
+export const generateKeyShares = (secret: string): string[] => {
+  // String To Uint8Array
+  const secretBytes = new TextEncoder().encode(secret)
+  // Secret Sharing
+  const shares = split_secret(secretBytes)
+  
+  // Separate The Outputs :
+  // Five Secret-Shares
+  // One Verifier
+  const SSSA_SIZE = 34;
+  const chunk : string[] = [];
+  for (let i = 0; i < SSSA_NUMSHARES; i ++) {
+    const share = shares.slice(i*SSSA_SIZE, (i+1)*SSSA_SIZE);
+    chunk.push(Buffer.from(share).toString('base64'));
+  }
+ 
+  const verifier = shares.slice(SSSA_NUMSHARES * SSSA_SIZE);
+  chunk.push(Buffer.from(verifier).toString('base64'));
+
+  return chunk;
 }
 
 /**
@@ -66,9 +83,14 @@ export const combineKeyShares = (shares: string[]): string => {
     throw new Error(
       `${Errors.TEE_RETRIEVE_ERROR} - CANNOT_COMBINE_SHARES: expected a minimum of ${SSSA_THRESHOLD} shares.`,
     )
-  const hexShares = filteredShares.map((bufferShare) => Buffer.from(bufferShare, "base64").toString("utf-8"))
-  const combinedShares = combine(hexShares)
-  return combinedShares
+  
+  const selected_shares = new Uint8Array(shares.length * SSSA_SIZE);
+  selected_shares.set(base64ToArrayBuffer(shares[0]));
+  for (let i = 1; i < filteredShares.length; i++)
+    selected_shares.set(base64ToArrayBuffer(shares[i]),SSSA_SIZE);
+      
+  const combinedShares = combine_secret(selected_shares);
+  return combinedShares.toString();
 }
 
 /**
