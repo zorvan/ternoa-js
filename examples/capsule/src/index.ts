@@ -1,10 +1,10 @@
 import * as fs from "fs"
-import { initializeApi } from "ternoa-js"
+import { generateSSSKey, initializeApi } from "ternoa-js"
 import { File } from "formdata-node"
 
 import { getCapsuleNFTPrivateKey, mintCapsuleNFT } from "ternoa-js"
 import { getKeyringFromSeed } from "ternoa-js"
-import { encryptFile, generatePGPKeys, TernoaIPFS } from "ternoa-js"
+import { encryptFile, TernoaIPFS } from "ternoa-js"
 
 //const SEED_TEST_FUNDS_PUBLIC="5CcqaTBwWvbB2MvmeteSDLVujL3oaFHtdf24pPVT3Xf8v7tC"
 const CHAIN_ENDPOINT = "wss://dev-0.ternoa.network"
@@ -44,11 +44,14 @@ const capsule = async () => {
     await initializeApi(CHAIN_ENDPOINT)
     const ipfsClient = new TernoaIPFS(new URL(IPFS_NODE_URL), IPFS_API_KEY)
     const owner = await getKeyringFromSeed(SEED)
-    const keys = await generatePGPKeys()
-
+    const keys =  await generateSSSKey()
+    
+    const privateKey = keys[0]?keys[0]:"aBcDeFgHiJkLmNoPqRsTuVwXyZ012345";
+    const publicKey = keys[1]?keys[1]:"aBcDeFgHiJkLmNoPqRsTuVwXyZ012345";
+    
     const encryptedMedia = [
       {
-        encryptedFile: await encryptFile(secretNftFile, keys.publicKey),
+        encryptedFile: await encryptFile(secretNftFile, privateKey),
         type: secretNftFile.type,
         ...capsuleMediaMetadata,
       },
@@ -56,7 +59,7 @@ const capsule = async () => {
     const mintCapasuleRes = await mintCapsuleNFT(
       owner,
       ipfsClient,
-      keys,
+      [privateKey, publicKey],
       nftFile,
       nftMetadata,
       encryptedMedia,

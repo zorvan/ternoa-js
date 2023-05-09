@@ -16,7 +16,7 @@ import {
   TeeSharesRemoveType,
   RequesterType,
 } from "./types"
-import { ensureHttps, removeURLSlash, retryPost, base64ToArrayBuffer } from "./utils"
+import { ensureHttps, removeURLSlash, retryPost, base64ToArray, arrayToBase64 } from "./utils"
 
 import { getClusterData, getEnclaveData } from "../tee"
 import { Errors } from "../constants"
@@ -51,7 +51,8 @@ export const SIGNER_BLOCK_VALIDITY = 20
  */
 export const generateKeyShares = (secret: string): string[] => {
   // String To Uint8Array
-  const secretBytes = new TextEncoder().encode(secret)
+  const secretBytes = base64ToArray(secret)
+
   // Secret Sharing
   const shares = split_secret(secretBytes)
   
@@ -60,14 +61,12 @@ export const generateKeyShares = (secret: string): string[] => {
   // One Verifier
   const SSSA_SIZE = 34;
   const chunk : string[] = [];
+  const verifier = Buffer.from(shares.slice(SSSA_NUMSHARES * SSSA_SIZE)).toString('base64');
   for (let i = 0; i < SSSA_NUMSHARES; i ++) {
     const share = shares.slice(i*SSSA_SIZE, (i+1)*SSSA_SIZE);
-    chunk.push(Buffer.from(share).toString('base64'));
+    chunk.push(Buffer.from(share).toString('base64')+verifier);
   }
- 
-  const verifier = shares.slice(SSSA_NUMSHARES * SSSA_SIZE);
-  chunk.push(Buffer.from(verifier).toString('base64'));
-
+   
   return chunk;
 }
 
@@ -83,14 +82,20 @@ export const combineKeyShares = (shares: string[]): string => {
     throw new Error(
       `${Errors.TEE_RETRIEVE_ERROR} - CANNOT_COMBINE_SHARES: expected a minimum of ${SSSA_THRESHOLD} shares.`,
     )
+ 
+  const selected_shares = new Uint8Array(filteredShares.length * SSSA_SIZE);
   
-  const selected_shares = new Uint8Array(shares.length * SSSA_SIZE);
-  selected_shares.set(base64ToArrayBuffer(shares[0]));
-  for (let i = 1; i < filteredShares.length; i++)
-    selected_shares.set(base64ToArrayBuffer(shares[i]),SSSA_SIZE);
-      
+  selected_shares.set(base64ToArray(shares[0].split('==')[0] + '=='));
+  
+  for (let i = 1; i < filteredShares.length; i++){
+    const secret = shares[i].split('==')[0] + '==';
+    const decodedSecret = base64ToArray(secret);
+    selected_shares.set(decodedSecret, SSSA_SIZE*i);
+  }
+  
   const combinedShares = combine_secret(selected_shares);
-  return combinedShares.toString();
+  console.log(combinedShares);
+  return arrayToBase64(combinedShares);
 }
 
 /**

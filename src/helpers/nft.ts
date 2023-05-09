@@ -14,7 +14,7 @@ import {
   teeKeySharesStore,
   SIGNER_BLOCK_VALIDITY,
 } from "./tee"
-import { CapsuleMedia, MediaMetadataType, NftMetadataType, PGPKeysType, RequesterType } from "./types"
+import { CapsuleMedia, MediaMetadataType, NftMetadataType, RequesterType } from "./types"
 import { getLastBlock, getSignatureFromExtension, getSignatureFromKeyring } from "./crypto"
 
 import { getKeyringFromSeed } from "../account"
@@ -92,7 +92,9 @@ export const prepareAndStoreKeyShares = async (
   const lastBlockId = await getLastBlock()
   const tmpSignerPair = await getTemporarySignerKeys(typeof signer === "string" ? signer : signer.address, lastBlockId)
   // 1. generate secret shares from the private key
+
   const shares = generateKeyShares(privateKey)
+
   // 2. format payloads with temporary signer account
   const signerAddress = typeof signer === "string" ? signer : signer.address
   const authMessage = `<Bytes>${tmpSignerPair.address}_${lastBlockId}_${SIGNER_BLOCK_VALIDITY}</Bytes>`
@@ -218,10 +220,10 @@ export const viewSecretNFT = async (
   const shares = await teeKeySharesRetrieve(clusterId, "secret", payload)
 
   // 3. Combine shares
-  const privatePGPKey = combineKeyShares(shares)
+  const privateKey = combineKeyShares(shares)
 
   // 4. Decrypt file to base 64
-  const decryptedBase64 = await decryptFile(encryptedSecretOffchainData, privatePGPKey)
+  const decryptedBase64 = await decryptFile(encryptedSecretOffchainData, privateKey)
   return decryptedBase64
 }
 
@@ -245,7 +247,7 @@ export const viewSecretNFT = async (
 export const mintCapsuleNFT = async (
   ownerPair: IKeyringPair,
   ipfsClient: TernoaIPFS,
-  keys: PGPKeysType,
+  keys: string[],
   nftFile: File,
   nftMetadata: NftMetadataType,
   encryptedMedia: CapsuleMedia[],
@@ -262,7 +264,7 @@ export const mintCapsuleNFT = async (
   // 1. media encryption and upload
   const { Hash: offchainDataHash } = await ipfsClient.storeNFT(nftFile, nftMetadata)
   const { Hash: capsuleOffchainDataHash } = await ipfsClient.storeCapsuleNFT(
-    keys.publicKey,
+    keys[1],
     encryptedMedia,
     capsuleMetadata,
   )
@@ -279,7 +281,7 @@ export const mintCapsuleNFT = async (
   )
 
   // 3. request to format and store a batch of secret shares to the enclave
-  const teeRes = await prepareAndStoreKeyShares(keys.privateKey, ownerPair, capsuleEvent.nftId, "capsule")
+  const teeRes = await prepareAndStoreKeyShares(keys[0], ownerPair, capsuleEvent.nftId, "capsule")
   return {
     event: capsuleEvent,
     clusterResponse: teeRes,

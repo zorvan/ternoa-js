@@ -70,12 +70,18 @@ export const ensureHttps = (url: string) => {
   else return "https://" + url
 }
 
+export function base64ToArray (b64encoded: string) {
+  const u8 = new Uint8Array(
+      atob(b64encoded).split("").map(
+          function(c) {
+              return c.charCodeAt(0);
+          }
+      ));
 
-export function base64ToArrayBuffer(base64: string) {
-    const binaryString = atob(base64);
-    const bytes = new Uint8Array(binaryString.length);
-    for (let i = 0; i < binaryString.length; i++) {
-        bytes[i] = binaryString.charCodeAt(i);
-    }
-    return bytes;
+  return u8;
+}
+
+export function arrayToBase64 (byteArray: Uint8Array) {
+  const numArray = Array.from(byteArray)
+  return btoa(String.fromCharCode.apply(null, numArray));
 }

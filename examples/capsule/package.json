@@ -1,12 +1,13 @@
 {
-  "name": "starter-project",
+  "name": "starter-capsule",
   "version": "1.0.0",
   "description": "You can use this project to bootstrap your own one.",
   "scripts": {
     "start": "tsc && node src/index.js"
   },
   "dependencies": {
-    "ternoa-js": "1.5.1"
+    // You should have run "npm run build" in the base directory
+    "ternoa-js": "file:../../build"
   },
   "devDependencies": {
     "@tsconfig/node18-strictest-esm": "1.0.0"

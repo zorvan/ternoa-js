@@ -3,7 +3,7 @@ import { File } from "formdata-node"
 import { generate_secret } from "vsss-wasm"
 
 import { PGPKeysType } from "./types"
-import { convertFileToBuffer } from "./utils"
+import { arrayToBase64, convertFileToBuffer } from "./utils"
 import CryptoJS from "crypto-js"
 
 /**
@@ -12,10 +12,11 @@ import CryptoJS from "crypto-js"
  * @returns                 A compatible secret for verifiable prime-field secret sharing.
  */
 export const generateSSSKey = async (): Promise<string[]> => {
-  const secretScalar = await generate_secret().toString()
-  const secretHash = CryptoJS.SHA256(secretScalar).toString()
+  const secretScalar = await generate_secret()
+  const secretStr = arrayToBase64(secretScalar)
+  const secretHash = CryptoJS.SHA256(secretStr).toString()
 
-  return [secretScalar, secretHash]
+  return [secretStr, secretHash]
 }
 
 /**
