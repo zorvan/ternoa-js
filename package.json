@@ -48,6 +48,7 @@
     "@babel/preset-env": "7.21.x",
     "@babel/preset-typescript": "7.21.x",
     "@jest/test-sequencer": "29.5.x",
+    "@types/crypto-js": "^4.2.1",
     "@types/jest": "29.5.x",
     "@types/mime-types": "2.1.x",
     "@typescript-eslint/eslint-plugin": "5.59.x",
@@ -70,11 +71,12 @@
     "axios": "0.27.x",
     "bn.js": "5.2.x",
     "buffer": "6.0.x",
-    "crypto-js": "4.1.1",
+    "crypto-js": "^4.1.1",
     "form-data-encoder": "1.7.x",
     "formdata-node": "4.4.x",
     "openpgp": "5.9.0",
-    "sssa-js": "^0.0.1",
-    "stream": "0.0.x"
+    "rimraf": "^5.0.5",
+    "stream": "0.0.x",
+    "vsss-wasm": "^0.1.0"
   }
 }
