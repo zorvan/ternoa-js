@@ -15,14 +15,16 @@ All the examples in this document assume that you use a Ubuntu like system. If t
   # Starting a new bash environment so we have access to nvm command.
   exec bash
   # Installing Node and Typescript
-  nvm install 18.7.0 && nvm use 18 && npm install -g typescript
+  nvm install 18.17.0 && nvm use 18 && npm install -g typescript
   # This prints out the current node and typescript version.
   node -v && tsc -v
+  # Install node modules
+  npm install --save
   # Compile starter-project
   tsc
   # You can run the project with calling node on index.js
   node ./src/index.js
-  # or you can compile and run the project with the following command.
+  # OR combine last two commands with:
   npm run start
 ```
 

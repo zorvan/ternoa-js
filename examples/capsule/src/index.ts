@@ -7,7 +7,7 @@ import { getKeyringFromSeed } from "ternoa-js"
 import { encryptFile, TernoaIPFS } from "ternoa-js"
 
 //const SEED_TEST_FUNDS_PUBLIC="5CcqaTBwWvbB2MvmeteSDLVujL3oaFHtdf24pPVT3Xf8v7tC"
-const CHAIN_ENDPOINT = "wss://dev-0.ternoa.network"
+const CHAIN_ENDPOINT = "wss://alphanet.ternoa.com"
 const CLUSTER_ID = 0
 const SEED = "hockey fine lawn number explain bench twenty blue range cover egg sibling"
 const IPFS_NODE_URL = "https://ipfs-dev.trnnfr.com"
