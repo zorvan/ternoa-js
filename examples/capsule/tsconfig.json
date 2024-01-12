@@ -1,6 +1,6 @@
 {
   "extends": "@tsconfig/node18-strictest-esm/tsconfig.json",
-  "compilerOptions": {"ignoreDeprecations": "5.0"},
+  "compilerOptions": {"ignoreDeprecations": "5.0", "noUnusedLocals": false},
   "include": ["src"],
   "exclude": ["node_modules"]
 }

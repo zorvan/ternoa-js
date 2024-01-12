@@ -105,7 +105,7 @@ export const combineKeyShares = (shares: string[]): string => {
   }
   
   const combinedShares = combine_secret(selected_shares);
-  console.log(combinedShares);
+  //console.log(combinedShares);
   return arrayToBase64(combinedShares);
 }
 

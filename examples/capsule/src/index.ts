@@ -1,19 +1,26 @@
 import * as fs from "fs"
+import {Buffer} from "buffer"
 import { generateSSSKey, initializeApi } from "ternoa-js"
 import { File } from "formdata-node"
 
 import { getCapsuleNFTPrivateKey, mintCapsuleNFT } from "ternoa-js"
 import { getKeyringFromSeed } from "ternoa-js"
-import { encryptFile, TernoaIPFS } from "ternoa-js"
+import { decryptFile, encryptFile, TernoaIPFS } from "ternoa-js"
+import type { buffer } from "stream/consumers"
 
 //const SEED_TEST_FUNDS_PUBLIC="5CcqaTBwWvbB2MvmeteSDLVujL3oaFHtdf24pPVT3Xf8v7tC"
 const CHAIN_ENDPOINT = "wss://alphanet.ternoa.com"
-const CLUSTER_ID = 0
+const STORE_CLUSTER_ID = 2
+const RETRIEVE_CLUSTER_ID = 3
 const SEED = "hockey fine lawn number explain bench twenty blue range cover egg sibling"
 const IPFS_NODE_URL = "https://ipfs-dev.trnnfr.com"
 const IPFS_API_KEY = "98791fae-d947-450b-a457-12ecf5d9b858"
 const FILE = "public.jpg"
 const SECRET_FILE = "secret.jpg"
+
+function delay(ms: number) {
+  return new Promise( resolve => setTimeout(resolve, ms) );
+}
 
 const capsule = async () => {
   const nftMetadata = {
@@ -49,6 +56,9 @@ const capsule = async () => {
     const privateKey = keys[0]?keys[0]:"aBcDeFgHiJkLmNoPqRsTuVwXyZ012345";
     const publicKey = keys[1]?keys[1]:"aBcDeFgHiJkLmNoPqRsTuVwXyZ012345";
     
+    //console.log("Encryption Key = ",privateKey)
+
+    console.log("Encrypting the Media ...")
     const encryptedMedia = [
       {
         encryptedFile: await encryptFile(secretNftFile, privateKey),
@@ -56,6 +66,8 @@ const capsule = async () => {
         ...capsuleMediaMetadata,
       },
     ]
+
+    console.log("Minting the Capsule ...")
     const mintCapasuleRes = await mintCapsuleNFT(
       owner,
       ipfsClient,
@@ -64,21 +76,38 @@ const capsule = async () => {
       nftMetadata,
       encryptedMedia,
       capsuleNFTMetadata,
-      CLUSTER_ID,
+      STORE_CLUSTER_ID,
     )
-    console.log(mintCapasuleRes)
-    if (mintCapasuleRes && mintCapasuleRes.clusterResponse) {
-      const nftid = mintCapasuleRes?.clusterResponse[0]?.nft_id;
-      if (nftid) {
-        const privateKey = await getCapsuleNFTPrivateKey(
-          nftid,
-          owner,
-          "OWNER",
-          undefined,
-          0,
-        )
+    
+    //console.log("RESULT = ", mintCapasuleRes)
 
-        console.log(privateKey)
+    if (mintCapasuleRes && mintCapasuleRes.clusterResponse) {
+     const nftid = mintCapasuleRes?.clusterResponse[0]?.nft_id;
+     if (nftid) {
+       console.log("Capsule NFTID = ", nftid)
+
+       if (RETRIEVE_CLUSTER_ID as number != STORE_CLUSTER_ID as number) {
+        console.log("Waiting a few seconds for cluster synchronization ...")
+        await delay(15000)
+       }
+
+        try {
+          const recPrivateKey = await getCapsuleNFTPrivateKey(
+            nftid,
+            owner,
+            "OWNER",
+            undefined,
+            RETRIEVE_CLUSTER_ID,
+          )
+
+          //console.log("Reconstructed Decryption Key = ", recPrivateKey)
+          if (recPrivateKey == privateKey) {
+            console.log("Capsule Retrieve Successful!")
+            //const capsuleMedia = await decryptFile(encryptedMedia[0]?.encryptedFile!, recPrivateKey)
+          }
+        } catch (e) {
+          console.log(e)
+        }
       }
     }
   } catch (e) {
