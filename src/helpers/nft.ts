@@ -170,7 +170,14 @@ export const mintSecretNFT = async (
   )
 
   // 3. request to format and store a batch of secret shares to the enclave
-  const teeRes = await prepareAndStoreKeyShares(privateKey, ownerPair, secretNftEvent.nftId, "secret", undefined, clusterId)
+  const teeRes = await prepareAndStoreKeyShares(
+    privateKey,
+    ownerPair,
+    secretNftEvent.nftId,
+    "secret",
+    undefined,
+    clusterId,
+  )
 
   return {
     event: secretNftEvent,

@@ -4,6 +4,7 @@ import { combine_secret, split_secret } from "vsss-wasm"
 import { Buffer } from "buffer"
 import { IKeyringPair } from "@polkadot/types/types"
 import { hexToString } from "@polkadot/util"
+import { createHash } from "crypto"
 
 import { getLastBlock, getSignatureFromExtension, getSignatureFromKeyring } from "./crypto"
 import { HttpClient } from "./http"
@@ -15,6 +16,9 @@ import {
   TeeSharesStoreType,
   TeeSharesRemoveType,
   RequesterType,
+  ReconciliationPayloadType,
+  TeeReconciliationType,
+  NFTListType,
 } from "./types"
 import { ensureHttps, removeURLSlash, retryPost, base64ToArray, arrayToBase64 } from "./utils"
 
@@ -28,8 +32,10 @@ import {
   NFTShareAvailableType,
   PopulatedEnclavesDataType,
   ClusterDataType,
-} from "tee/types"
+} from "../tee/types"
 import { isValidAddress, query } from "../blockchain"
+import { getBalances } from "../balance"
+import { BN } from "bn.js"
 
 export const SSSA_SIZE = 34
 export const SSSA_NUMSHARES = 5
@@ -115,17 +121,26 @@ export const combineKeyShares = (shares: string[]): string => {
  * @param clusterId   The TEE Cluster id.
  * @returns           An array of JSONs containing each enclave information (status, date, description, addresses)
  */
-export const getEnclaveHealthStatus = async (clusterId = 0) => {
+export const getEnclaveHealthStatus = async (clusterId = 0, timeout = 10000) => {
   const teeEnclaves = await getTeeEnclavesBaseUrl(clusterId)
+  const lastBlock = await getLastBlock()
   const clusterHealthCheck = await Promise.all(
     teeEnclaves.map(async (enclaveUrl, idx) => {
-      const http = new HttpClient(ensureHttps(enclaveUrl))
+      const http = new HttpClient(ensureHttps(enclaveUrl), timeout)
       const enclaveData: EnclaveHealthType = await http.getRaw(TEE_HEALTH_ENDPOINT)
       const isError = enclaveData.status !== 200
-      if (isError || !enclaveData.sync_state.length || enclaveData.sync_state == "setup")
-        throw new Error(
-          `${Errors.TEE_ENCLAVE_NOT_AVAILBLE} - ID ${idx}, URL: ${enclaveUrl}. ${enclaveData.description}`,
-        )
+      if (isError || !enclaveData.sync_state.length || enclaveData.sync_state == "setup") throw new Error(
+        `${Errors.TEE_ENCLAVE_NOT_AVAILBLE} - ID ${idx}, URL: ${enclaveUrl}. ${enclaveData.description}`,
+      )
+      // ADDITIONAL CHECKS
+      if ((lastBlock - enclaveData.block_number) > 4) throw new Error(
+        `${Errors.TEE_ENCLAVE_NOT_AVAILBLE} - ID ${idx}, URL: ${enclaveUrl}. Enclave blocks not synchornized with chain`,
+      )
+      const { free } = await getBalances(enclaveData.enclave_address)
+      const ONE_CAPS = new BN("1000000000000000000")
+      if (free.lt(ONE_CAPS)) throw new Error(
+        `${Errors.TEE_ENCLAVE_NOT_AVAILBLE} - ID ${idx}, URL: ${enclaveUrl}. Enclave balance too low`,
+      )
       return enclaveData
     }),
   )
@@ -165,12 +180,12 @@ export const populateEnclavesData = async (clusterId = 0) => {
  * @param clusterId   The TEE Cluster id.
  * @returns           An array of JSONs containing each enclave data populated with its health information.
  */
-export const getEnclaveDataAndHealth = async (clusterId = 0): Promise<EnclaveDataAndHealthType[]> => {
+export const getEnclaveDataAndHealth = async (clusterId = 0, timeout = 10000): Promise<EnclaveDataAndHealthType[]> => {
   const teeEnclaves = await populateEnclavesData(clusterId)
-  const enclaveData = await Promise.all(
+  const enclaveData: EnclaveDataAndHealthType[] = await Promise.all(
     teeEnclaves.map(async (e, idx) => {
       try {
-        const http = new HttpClient(ensureHttps(e.enclaveUrl))
+        const http = new HttpClient(ensureHttps(e.enclaveUrl), timeout)
         const enclaveHealthData: EnclaveHealthType = await http.getRaw(TEE_HEALTH_ENDPOINT)
         const { block_number, sync_state, version, description, status } = enclaveHealthData
         return { ...e, status, blockNumber: block_number, syncState: sync_state, description, version }
@@ -241,27 +256,27 @@ export const getPublicsClusters = async () => {
 
 /**
  * @name getFirstPublicClusterAvailable
- * @summary           Provides the id of the first available public cluster.
+ * @summary           Provides the id of the first available healthy public cluster.
  * @returns           A clusterId as a number.
  */
-export const getFirstPublicClusterAvailable = async () => {
-  const nextClusterId = await getNextClusterIdAvailable()
-  for (let i = 0; i < nextClusterId; i++) {
+export const getFirstPublicClusterAvailable = async (timeout = 10000) => {
+  const publicClusters = await getPublicsClusters()
+  if (publicClusters.length === 0) return undefined
+
+  for (const cluster of publicClusters) {
     try {
-      const data = await query(txPallets.tee, chainQuery.clusterData, [i])
-      const result = data.toJSON() as ClusterDataType
-      if (result) {
-        const { enclaves, clusterType } = result
-        // CHECK PUBLIC CLUSTER WITH THE 5 ENCLAVES WORKING
-        if (enclaves.length === ENCLAVES_IN_CLUSTER && clusterType === "Public") {
-          return i
-        }
+      const healthData = await timeoutTrigger<EnclaveHealthType[]>(() =>
+        getEnclaveHealthStatus(cluster, timeout),
+        timeout + 1000
+      )
+      if (healthData.length === ENCLAVES_IN_CLUSTER) {
+        return cluster
       }
     } catch (error) {
-      // DO NOT THROW AN ERROR - WE WANT TO PROVIDE THE NEXT ID.
-      // console.log(`CLUSTER_${i}_UNAVAILABLE - ${error instanceof Error ? error.message : JSON.stringify(error)}`)
+      // DO NOT THROW AN ERROR - CONTINUE TO THE NEXT CLUSTER.
     }
   }
+  return undefined
 }
 
 /**
@@ -575,4 +590,81 @@ export const teeKeySharesRemove = async (
   )
 
   return shares
+}
+
+/**
+ * @name formatReconciliationIntervalPayload
+ * @summary                       Prepares post request payload to reconciliate the list of secret/capsule NFT synced on a block interval period.
+ * @param interval                The block number interval period: an array of the starting and ending block.
+ * @param metricsServerKeyring    The metric server keyring.
+ * @returns                       A formatted payload ready to be submitted to TEE enclaves.
+ */
+export const formatReconciliationIntervalPayload = async (
+  interval: [number, number],
+  metricsServerKeyring: IKeyringPair,
+): Promise<ReconciliationPayloadType> => {
+  const block_number = await getLastBlock()
+  const block_validation = SIGNER_BLOCK_VALIDITY
+  const formattedInterval = JSON.stringify(interval)
+  const data_hash = createHash("sha256").update(formattedInterval).digest("hex")
+  const authenticationToken = JSON.stringify({
+    block_number,
+    block_validation,
+    data_hash,
+  })
+  const signedToken = getSignatureFromKeyring(metricsServerKeyring, authenticationToken)
+  return {
+    metric_account: metricsServerKeyring.address,
+    block_interval: formattedInterval,
+    auth_token: authenticationToken,
+    signature: signedToken,
+  }
+}
+
+/**
+ * @name teeNFTReconciliation
+ * @summary                       Get a reconciliation list of secret/capsule NFT synced on a block interval period.
+ * @param clusterId               The TEE Cluster id to query.
+ * @param interval                The block number interval period: an array of the starting and ending block.
+ * @param metricsServerKeyring    The metric server keyring.
+ * @returns                       An array of JSONs containing the NFT list and the TEE addresses (operator & enclave)
+ */
+export const teeNFTReconciliation = async (
+  clusterId: number,
+  interval: [number, number],
+  metricsServerKeyring: IKeyringPair,
+) => {
+  const payload = await formatReconciliationIntervalPayload(interval, metricsServerKeyring)
+  if (!payload) throw new Error(Errors.RECONCILIATION_PAYLOAD_UNDEFINED)
+  const teeEnclaves = await populateEnclavesData(clusterId)
+  if (teeEnclaves.length !== SSSA_NUMSHARES)
+    throw new Error(
+      `${Errors.NOT_CORRECT_AMOUNT_TEE_ENCLAVES} - Got: ${teeEnclaves.length}; Expected: ${SSSA_NUMSHARES}`,
+    )
+  const errors: TeeReconciliationType[] = []
+  let nftList = await Promise.all(
+    teeEnclaves.map(async (e) => {
+      const http = new HttpClient(ensureHttps(e.enclaveUrl))
+      try {
+        const data = await teePost<ReconciliationPayloadType, NFTListType>(http, RECONCILIATION_NFT_INTERVAL, payload)
+        return {
+          enclaveAddress: e.enclaveAddress,
+          operatorAddress: e.operatorAddress,
+          nftId: data.nftid,
+        } as TeeReconciliationType
+      } catch (error) {
+        const errorDescription = error instanceof Error ? error.message : JSON.stringify(error)
+        errors.push({
+          enclaveAddress: e.enclaveAddress,
+          operatorAddress: e.operatorAddress,
+          nftId: [],
+          error: errorDescription,
+        })
+      }
+    }),
+  )
+
+  if (!nftList) throw new Error(Errors.NFT_RECONCILIATION_FAILED)
+  nftList = nftList.filter((x) => x !== undefined)
+  return [...nftList, ...errors]
 }
