@@ -1,6 +1,6 @@
 // eslint-disable-next-line @typescript-eslint/ban-ts-comment
 // @ts-ignore
-import { combine_secret, split_secret } from "vsss-wasm"
+import { combinesecret, splitsecret } from "vsss-wasm"
 import { Buffer } from "buffer"
 import { IKeyringPair } from "@polkadot/types/types"
 import { hexToString } from "@polkadot/util"
@@ -20,7 +20,7 @@ import {
   TeeReconciliationType,
   NFTListType,
 } from "./types"
-import { ensureHttps, removeURLSlash, retryPost, base64ToArray, arrayToBase64 } from "./utils"
+import { ensureHttps, removeURLSlash, retryPost, base64ToArray, arrayToBase64, timeoutTrigger } from "./utils"
 
 import { getClusterData, getEnclaveData, getNextClusterIdAvailable } from "../tee"
 import { Errors, chainQuery, txPallets } from "../constants"
@@ -71,7 +71,7 @@ export const generateKeyShares = (secret: string): string[] => {
   const secretBytes = base64ToArray(secret)
 
   // Secret Sharing
-  const shares = split_secret(secretBytes)
+  const shares = splitsecret(secretBytes)
   
   // Separate The Outputs :
   // Five Secret-Shares
@@ -110,7 +110,7 @@ export const combineKeyShares = (shares: string[]): string => {
     selected_shares.set(decodedSecret, SSSA_SIZE*i);
   }
   
-  const combinedShares = combine_secret(selected_shares);
+  const combinedShares = combinesecret(selected_shares);
   //console.log(combinedShares);
   return arrayToBase64(combinedShares);
 }

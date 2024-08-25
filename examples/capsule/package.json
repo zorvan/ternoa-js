@@ -3,13 +3,15 @@
   "version": "1.0.0",
   "description": "You can use this project to bootstrap your own one.",
   "scripts": {
-    "start": "tsc && node src/index.js"
+    "start": "tsc && rm src/index.mjs && cp src/index.js src/index.mjs -f  && node  --experimental-specifier-resolution=node src/index.mjs"
   },
   "dependencies": {
-    "ternoa-js": "file:../../build"
+    "@bytecodealliance/preview2-shim": "^0.16.5",
+    "node-fetch": "^2.6.1",
+    "ternoa-js": "file:../../build",
+    "typescript": "^5.5.4"
   },
   "devDependencies": {
-    "@tsconfig/node18-strictest-esm": "1.0.0"
-  },
-  "type": "module"
+    "@tsconfig/recommended": "^1.0.7"
+  }
 }

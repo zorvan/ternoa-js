@@ -5,6 +5,7 @@
   "engines": {
     "node": ">=14.13.1 || >=16.0.0"
   },
+  "type": "module",
   "main": "./src/index.ts",
   "scripts": {
     "start": "ts-node src/index.ts",
@@ -36,6 +37,9 @@
     },
     {
       "name": "Marko Petrlic"
+    },
+    {
+      "name": "Amin Razavi"
     }
   ],
   "license": "Apache-2.0",
@@ -60,18 +64,23 @@
     "ts-jest": "29.1.x",
     "ts-node": "10.9.x",
     "typedoc": "^0.25.4",
-    "typescript": "^5.3.3"
+    "typescript": "^5.5.4"
   },
   "dependencies": {
-    "@polkadot/api": "^10.10.1",
-    "axios": "^1.6.2",
+    "@openpgp/crystals-kyber-js": "1.1.1",
+    "@polkadot/api": "^12.4.2",
+    "@wasm-tool/wasi": "0.0.4",
+    "axios": "^1.7.5",
     "bn.js": "5.2.x",
     "buffer": "6.0.x",
     "crypto-js": "^4.1.1",
     "form-data-encoder": "1.7.x",
     "formdata-node": "4.4.x",
+    "node-fetch": "^2.6.1",
     "openpgp": "^5.11.0",
     "sssa-js": "^0.0.1",
-    "stream": "0.0.x"
+    "stream": "0.0.x",
+    "vsss-wasm": "0.2.0",
+    "@bytecodealliance/preview2-shim": "^0.16.5"
   }
 }

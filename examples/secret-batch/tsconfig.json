@@ -1,0 +1,6 @@
+{
+  "extends": "@tsconfig/node18-strictest-esm/tsconfig.json",
+  "compilerOptions": {"ignoreDeprecations": "5.0","verbatimModuleSyntax": true},
+  "include": ["src"],
+  "exclude": ["node_modules"]
+}

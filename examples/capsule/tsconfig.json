@@ -1,6 +1,25 @@
 {
-  "extends": "@tsconfig/node18-strictest-esm/tsconfig.json",
-  "compilerOptions": {"ignoreDeprecations": "5.0", "noUnusedLocals": false},
+  "extends": "@tsconfig/recommended/tsconfig.json",
+  "compilerOptions": {
+    "ignoreDeprecations": "5.0", 
+    "noUnusedLocals": false,
+    "target": "es6",
+    "module": "ES2022",
+    "moduleResolution": "node",
+    "isolatedModules": false,
+    "jsx": "react",
+    "experimentalDecorators": true,
+    "emitDecoratorMetadata": true,
+    "declaration": false,
+    "noImplicitAny": false,
+    "noImplicitUseStrict": false,
+    "removeComments": true,
+    "noLib": false,
+    "preserveConstEnums": true,
+    "suppressImplicitAnyIndexErrors": true,
+    "esModuleInterop": true
+  },
+  
   "include": ["src"],
   "exclude": ["node_modules"]
 }

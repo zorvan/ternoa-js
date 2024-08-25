@@ -3,7 +3,7 @@ import { mnemonicGenerate } from "@polkadot/util-crypto"
 import { File } from "formdata-node"
 
 import { TernoaIPFS } from "./ipfs"
-import { decryptFile, encryptFile, generateSSSKey } from "./encryption"
+import { encryptSecretFile, decryptSecretFile, generateSSSKey } from "./encryption"
 import {
   combineKeyShares,
   formatStorePayload,
@@ -41,7 +41,7 @@ export const secretNftEncryptAndUploadFile = async (
   mediaMetadata?: MediaMetadataType,
 ) => {
   if (!file) throw new Error(`${Errors.IPFS_FILE_UPLOAD_ERROR} - File undefined`)
-  const encryptedFile = await encryptFile(file, privatePGPKey)
+  const encryptedFile = await encryptSecretFile(file, privatePGPKey)
   const ipfsRes = await ipfsClient.storeSecretNFT(encryptedFile, file.type, publicPGPKey, nftMetadata, mediaMetadata)
 
   return ipfsRes
@@ -230,7 +230,7 @@ export const viewSecretNFT = async (
   const privateKey = combineKeyShares(shares)
 
   // 4. Decrypt file to base 64
-  const decryptedBase64 = await decryptFile(encryptedSecretOffchainData, privateKey)
+  const decryptedBase64 = await decryptSecretFile(encryptedSecretOffchainData, privateKey)
   return decryptedBase64
 }
 

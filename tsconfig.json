@@ -1,8 +1,8 @@
 {
   "compilerOptions": {
-    "target": "es2016",
-    "module": "commonjs", // "node16",
-    "lib": ["es2023"], // "dom", "dom.iterable"
+    "target": "ES6",
+    "module": "ES2022",//"commonjs", // "node16",
+    "lib": ["ES2023"], // "dom", "dom.iterable"
     "declaration": true,
     "outDir": "build",
     "skipLibCheck": true,
@@ -12,6 +12,7 @@
     "noUnusedParameters": true,
     "forceConsistentCasingInFileNames": true,
     "allowJs": true,
+    "moduleResolution": "Node",
     "resolveJsonModule": true,
   },
   "include": ["src"],

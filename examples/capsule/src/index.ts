@@ -1,20 +1,30 @@
 import * as fs from "fs"
-import {Buffer} from "buffer"
+//import {Buffer} from "buffer"
+
+//import pkg from 'ternoa-js';
+
 import { generateSSSKey, initializeApi } from "ternoa-js"
+//const { generateSSSKey, initializeApi } = pkg;
 import { File } from "formdata-node"
 
 import { getCapsuleNFTPrivateKey, mintCapsuleNFT } from "ternoa-js"
+//const { getCapsuleNFTPrivateKey, mintCapsuleNFT } = pkg;
 import { getKeyringFromSeed } from "ternoa-js"
-import { decryptFile, encryptFile, TernoaIPFS } from "ternoa-js"
-import type { buffer } from "stream/consumers"
+//const { getKeyringFromSeed } = pkg;
+
+import { encryptCapsuleFile, TernoaIPFS } from "ternoa-js"
+//const { encryptCapsuleFile, TernoaIPFS } = pkg;
+
+//import type { buffer } from "stream/consumers"
 
 //const SEED_TEST_FUNDS_PUBLIC="5CcqaTBwWvbB2MvmeteSDLVujL3oaFHtdf24pPVT3Xf8v7tC"
 const CHAIN_ENDPOINT = "wss://alphanet.ternoa.com"
 const STORE_CLUSTER_ID = 2
 const RETRIEVE_CLUSTER_ID = 3
-const SEED = "hockey fine lawn number explain bench twenty blue range cover egg sibling"
+const SEED = "fill it with your seed"
 const IPFS_NODE_URL = "https://ipfs-dev.trnnfr.com"
-const IPFS_API_KEY = "98791fae-d947-450b-a457-12ecf5d9b858"
+const IPFS_API_KEY = "fill it with your api key"
+
 const FILE = "public.jpg"
 const SECRET_FILE = "secret.jpg"
 
@@ -61,7 +71,7 @@ const capsule = async () => {
     console.log("Encrypting the Media ...")
     const encryptedMedia = [
       {
-        encryptedFile: await encryptFile(secretNftFile, privateKey),
+        encryptedFile: await encryptCapsuleFile(secretNftFile, privateKey, publicKey),
         type: secretNftFile.type,
         ...capsuleMediaMetadata,
       },

@@ -71,6 +71,23 @@ export const ensureHttps = (url: string) => {
   else return "https://" + url
 }
 
+export const timeoutTrigger = <T>(fn: () => Promise<T>, duration = 10000): Promise<T> => {
+  return new Promise((resolve, reject) => {
+    const timer = setTimeout(() => {
+      reject(new Error("Error: Function timed out"))
+    }, duration)
+
+    try {
+      const data = fn()
+      clearTimeout(timer)
+      resolve(data)
+    } catch (error) {
+      clearTimeout(timer)
+      reject(error)
+    }
+  })
+}
+
 export function base64ToArray (b64encoded: string) {
   const u8 = new Uint8Array(
       atob(b64encoded).split("").map(
